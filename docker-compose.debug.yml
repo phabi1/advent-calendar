@@ -1,0 +1,52 @@
+version: '3.4'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3.11-alpine
+    networks:
+      - private
+
+  api-gateway:
+    image: advent-calendar/api-gateway
+    build:
+      context: .
+      dockerfile: ./apps/api/gateway/Dockerfile
+    depends_on:
+      - rabbitmq
+    environment:
+      NODE_ENV: development
+    volumes:
+      - .:/usr/src/app
+      - node_modules:/usr/src/app/node_modules
+    networks:
+      - private
+      - public
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.adventcalendar.rule=Host(`advent-calendar.docker.localhost`) && PathPrefix(`/api`)
+    extra_hosts:
+      - keycloak.docker.localhost:${TRAEFIK_WEBGATEWAY}
+
+  server-games:
+    image: advent-calendar/server-games
+    build:
+      context: .
+      dockerfile: ./apps/server/games/Dockerfile
+    depends_on:
+      - rabbitmq
+    environment:
+      NODE_ENV: development
+    volumes:
+      - .:/usr/src/app
+      - node_modules:/usr/src/app/node_modules
+    networks:
+      - private
+
+volumes:
+  node_modules:
+
+networks:
+  private:
+  public:
+    name: traefik_webgateway
+    external: true
